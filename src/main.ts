@@ -1,4 +1,4 @@
-import './commons/lib/instrument';
+import './lib/instrument';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';

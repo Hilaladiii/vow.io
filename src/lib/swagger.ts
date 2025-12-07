@@ -6,9 +6,13 @@ export const setupSwagger = (app: INestApplication) => {
     .setTitle('Nest Boilerplate')
     .setDescription('Nest Boilerplate Description')
     .setVersion('1.0')
-    .addTag('nest')
+    .addBearerAuth()
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  SwaggerModule.setup('api/docs', app, documentFactory, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 };
