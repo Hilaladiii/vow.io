@@ -11,5 +11,97 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "postgresql"    
+}
+
+model User{
+  id String @id @default(uuid())
+  email String @unique
+  username String @unique
+  password String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")  
+
+  @@map("users")
+}
+
+model Document{
+  id String @id @default(uuid())
+  fileName String @map("file_name")
+  fileKey String @map("file_key")
+  order Int
+
+  envelopeId String @map("envelope_id")
+  envelope Envelope @relation(fields: [envelopeId],references: [id])
+
+  fields Field[]
+
+  @@map("documents")
+}
+
+enum EnvelopeStatus{
+  DRAFT
+  SENT
+  COMPLETED
+}
+model Envelope{
+  id String @id @default(uuid())
+  subject String
+  status EnvelopeStatus
+
+  documents Document[]
+  signers Signer[]
+  auditLogs AuditLog[] 
+
+  @@map("envelopes")
+}
+
+enum SignerStatus{
+  PENDING
+  SIGNED
+}
+model Signer{
+  id String @id @default(uuid())
+  email String @unique
+  token String
+  status SignerStatus @default(PENDING)
+
+  envelopeId String @map("envelope_id")
+  envelope Envelope @relation(fields: [envelopeId],references: [id])
+  fields Field[]
+
+  @@map("signers")
+}
+
+enum FieldType{
+  SIGNATURE
+  DATE
+  TEXT  
+}
+model Field{
+  id String @id @default(uuid())
+  type FieldType
+  x Float 
+  y Float
+  pageNumber Int @map("page_number")
+
+  signerId String @map("signer_id")
+  signer Signer @relation(fields: [signerId],references: [id])
+
+  documentId String @map("document_id")
+  document Document @relation(fields: [documentId],references: [id])
+
+  @@map("fields")
+}
+
+model AuditLog{
+  id String @id @default(uuid())
+  action String
+  ipAddress String @map("ip_address")
+  datetime DateTime @default(now())
+
+  envelopeId String @map("envelope_id")
+  envelope Envelope @relation(fields: [envelopeId],references: [id])
+
+  @@map("audit_logs")
 }
