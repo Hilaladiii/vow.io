@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   Injectable,
-  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,7 +27,7 @@ export class MinioService {
         throw new BadRequestException('Bucket already exists');
       await this.minioClient.makeBucket(bucketName);
     } catch (error) {
-      throw new InternalServerErrorException('Create bucket failed', error);
+      throw error;
     }
   }
 
@@ -38,7 +37,7 @@ export class MinioService {
       if (!isBucketExists) throw new NotFoundException('Bucket not found');
       await this.minioClient.removeBucket(bucketName);
     } catch (error) {
-      throw new InternalServerErrorException('Delete bucket failed', error);
+      throw error;
     }
   }
 
@@ -54,7 +53,7 @@ export class MinioService {
       const url = await this.getFileUrl(bucketName, fileName);
       return url;
     } catch (error) {
-      throw new InternalServerErrorException('File upload failed', error);
+      throw error;
     }
   }
 
@@ -69,7 +68,7 @@ export class MinioService {
       await this.deleteFile(bucketName, url);
       return await this.uploadFile(file, bucketName);
     } catch (error) {
-      throw new InternalServerErrorException('File update failed', error);
+      throw error;
     }
   }
 
@@ -77,7 +76,7 @@ export class MinioService {
     try {
       return this.minioClient.presignedUrl('GET', bucketName, fileName);
     } catch (error) {
-      throw new InternalServerErrorException(error);
+      throw error;
     }
   }
 
@@ -86,7 +85,7 @@ export class MinioService {
       const fileName = this.getFileNameFromUrl(url);
       await this.minioClient.removeObject(bucketName, fileName);
     } catch (error) {
-      throw new InternalServerErrorException('File delete failed', error);
+      throw error;
     }
   }
 
