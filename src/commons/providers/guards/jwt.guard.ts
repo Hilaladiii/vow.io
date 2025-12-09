@@ -14,16 +14,13 @@ export class JwtGuard extends AuthGuard('jwt') {
   ): boolean | Promise<boolean> | Observable<boolean> {
     try {
       const request = context.switchToHttp().getRequest();
-      const bearerToken = request.headers.authorizations?.replace(
-        'Bearer ',
-        '',
-      );
-
-      if (!bearerToken) return false;
-
-      const token = this.jwtService.verify(bearerToken);
+      const token = request.cookies?.token;
 
       if (!token) return false;
+
+      const isTokenValid = this.jwtService.verify(token);
+
+      if (!isTokenValid) return false;
 
       request.user = token;
 

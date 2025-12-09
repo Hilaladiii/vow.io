@@ -8,6 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { RedisModule } from './modules/redis/redis.module';
+import { UserModule } from './modules/user/user.module';
+import { DocumentModule } from './modules/document/document.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { RedisModule } from './modules/redis/redis.module';
     MinioModule,
     AuthModule,
     RedisModule,
+    UserModule,
+    DocumentModule,
   ],
   providers: [
     {
