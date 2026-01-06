@@ -1,7 +1,7 @@
 import {
-  BadRequestException,
   Body,
   Controller,
+  Get,
   HttpStatus,
   ParseFilePipeBuilder,
   Post,
@@ -34,16 +34,18 @@ export class DocumentController {
         }),
     )
     files: Express.Multer.File[],
-    @Body() { metaOrder }: UploadDocumentDto,
+    @Body() { isMerged }: UploadDocumentDto,
   ) {
-    if (files.length > 1) {
-      if (metaOrder?.length !== files?.length)
-        throw new BadRequestException(
-          'The number of orderDocument data is not the same as the number of uploaded files.',
-        );
-
-      const mergedFile = await this.documentService.merge(files, metaOrder);
+    if (isMerged) {
+      const mergedFile = await this.documentService.merge(files);
       await this.documentService.upload(mergedFile, userId);
+      return true;
+    }
+
+    if (files?.length > 1) {
+      files.forEach(async (file) => {
+        await this.documentService.upload(file, userId);
+      });
       return true;
     }
 

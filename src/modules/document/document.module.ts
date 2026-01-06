@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { DocumentService } from './document.service';
-import { MinioModule } from '../minio/minio.module';
 import { DocumentController } from './document.controller';
+import { S3Module } from '../s3/s3.module';
 
 @Module({
-  imports: [MinioModule],
+  imports: [S3Module],
   providers: [DocumentService],
   controllers: [DocumentController],
 })

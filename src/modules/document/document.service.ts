@@ -1,38 +1,37 @@
 import { Injectable } from '@nestjs/common';
-import { MinioService } from '../minio/minio.service';
 import { PDFDocument } from 'pdf-lib';
-import { IMetaOrder } from './interface';
+import { S3Service } from '../s3/s3.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DocumentService {
-  constructor(private minioService: MinioService) {}
+  constructor(
+    private s3Service: S3Service,
+    private prismaService: PrismaService,
+  ) {}
 
   async upload(file: Express.Multer.File, userId: string) {
-    await this.minioService.updateFile(
-      file,
-      file.originalname + userId,
-      'documents',
-    );
+    const { filename, url } = await this.s3Service.upload(file);
+    await this.prismaService.envelope.create({
+      data: {
+        subject: `${filename}-Draft`,
+        status: 'DRAFT',
+        documents: {
+          create: {
+            fileName: filename,
+            fileKey: url,
+          },
+        },
+        userId,
+      },
+    });
   }
 
-  async merge(
-    files: Express.Multer.File[],
-    metaOrders: IMetaOrder[],
-  ): Promise<Express.Multer.File> {
+  async merge(files: Express.Multer.File[]): Promise<Express.Multer.File> {
     try {
-      const sortedFiles = files.sort((a, b) => {
-        const orderA =
-          metaOrders.find((meta) => meta.filename == a.originalname)?.order ??
-          999;
-        const orderB =
-          metaOrders.find((meta) => meta.filename === b.originalname)?.order ??
-          999;
-
-        return orderA - orderB;
-      });
       const mergedPdf = await PDFDocument.create();
 
-      for (const file of sortedFiles) {
+      for (const file of files) {
         const srcDocument = await PDFDocument.load(file.buffer, {
           ignoreEncryption: true,
         });
