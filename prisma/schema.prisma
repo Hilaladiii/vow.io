@@ -22,6 +22,8 @@ model User{
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")  
 
+  envelopes Envelope[]
+
   @@map("users")
 }
 
@@ -29,9 +31,9 @@ model Document{
   id String @id @default(uuid())
   fileName String @map("file_name")
   fileKey String @map("file_key")
-  order Int
+  createdAt DateTime @default(now()) @map("created_at")
 
-  envelopeId String @map("envelope_id")
+  envelopeId String @unique @map("envelope_id")
   envelope Envelope @relation(fields: [envelopeId],references: [id])
 
   fields Field[]
@@ -48,8 +50,12 @@ model Envelope{
   id String @id @default(uuid())
   subject String
   status EnvelopeStatus
+  createdAt DateTime @default(now()) @map("created_at")
 
-  documents Document[]
+  userId String @map("user_id")
+
+  user User @relation(fields: [userId],references: [id])
+  documents Document?
   signers Signer[]
   auditLogs AuditLog[] 
 
@@ -62,8 +68,9 @@ enum SignerStatus{
 }
 model Signer{
   id String @id @default(uuid())
-  email String @unique
-  token String
+  firstName String @map("first_name")
+  lastName String @map("last_name")
+  email String  
   status SignerStatus @default(PENDING)
 
   envelopeId String @map("envelope_id")
@@ -80,7 +87,8 @@ enum FieldType{
 }
 model Field{
   id String @id @default(uuid())
-  type FieldType
+  value String?
+  type FieldType  
   x Float 
   y Float
   pageNumber Int @map("page_number")
@@ -94,9 +102,16 @@ model Field{
   @@map("fields")
 }
 
+enum Action {
+  SENT
+  VIEW
+  SIGNED
+}
+
 model AuditLog{
   id String @id @default(uuid())
-  action String
+  action Action
+  user String
   ipAddress String @map("ip_address")
   datetime DateTime @default(now())
 
