@@ -8,6 +8,7 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as mime from 'mime-types';
 
 @Injectable()
 export class S3Service implements OnModuleInit {
@@ -21,7 +22,7 @@ export class S3Service implements OnModuleInit {
       region: this.configService.get('S3_REGION'),
       credentials: {
         accessKeyId: this.configService.get('S3_ACCESS_KEY'),
-        secretAccessKey: this.configService.get('S3_ACCESS_KEY'),
+        secretAccessKey: this.configService.get('S3_SECRET_KEY'),
       },
       forcePathStyle: true,
     });
@@ -55,21 +56,40 @@ export class S3Service implements OnModuleInit {
 
   async upload(file: Express.Multer.File) {
     try {
+      const key = `${file.originalname}-${new Date()}`;
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
-        Key: file.originalname,
+        Key: key,
         Body: file.buffer,
         ContentType: file.mimetype,
       });
 
       await this.s3Client.send(command);
+      const url = await this.get(key);
       return {
-        url: `${this.configService.get('S3_ENDPOINT')}/${this.bucketName}/${file.originalname}`,
-        filename: file.originalname,
+        url,
+        filename: key,
       };
     } catch (error) {
       throw error;
     }
+  }
+
+  async uploadBuffer(buffer: Buffer, key: string) {
+    const contentType = mime.lookup(key) || 'application/octet-stream';
+
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    });
+
+    await this.s3Client.send(command);
+    const url = await this.get(key);
+    return {
+      url,
+    };
   }
 
   async get(filename: string) {
@@ -78,6 +98,6 @@ export class S3Service implements OnModuleInit {
       Key: filename,
     });
 
-    return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 });
+    return await getSignedUrl(this.s3Client, command, { expiresIn: 3600 * 24 });
   }
 }

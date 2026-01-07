@@ -5,6 +5,6 @@ import { Type } from 'class-transformer';
 export class EnvelopeAddSignerDto {
   @IsDefined()
   @ValidateNested()
-  @Type(() => Array<EnvelopeSignerDto>)
+  @Type(() => EnvelopeSignerDto)
   signers: EnvelopeSignerDto[];
 }

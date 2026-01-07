@@ -17,7 +17,6 @@ import {
   searchContains,
 } from 'src/commons/utils/prisma-helper';
 import { EnvelopeWhereInput } from 'generated/prisma/models';
-import { randomUUID } from 'node:crypto';
 import { SignerService } from '../signer/signer.service';
 import { S3Service } from '../s3/s3.service';
 import { InjectQueue } from '@nestjs/bull';
@@ -30,6 +29,7 @@ export class EnvelopeService {
     private signerService: SignerService,
     private s3Service: S3Service,
     @InjectQueue('email') private emailQueue: Queue,
+    @InjectQueue('pdf') private pdfQueue: Queue,
   ) {}
 
   async getAll({
@@ -72,7 +72,6 @@ export class EnvelopeService {
     const payload = signers.map((signer) => {
       return {
         ...signer,
-        token: randomUUID(),
         envelopeId: envelope.id,
       };
     });
@@ -105,7 +104,7 @@ export class EnvelopeService {
     if (!user || signers.length === 0)
       throw new NotFoundException('User or signer not found');
 
-    return this.prismaService.$transaction(async (tx) => {
+    const transaction = this.prismaService.$transaction(async (tx) => {
       const envelope = await tx.envelope.update({
         data: {
           status: 'SENT',
@@ -123,6 +122,7 @@ export class EnvelopeService {
           documents: {
             select: {
               id: true,
+              fileName: true,
             },
           },
         },
@@ -139,14 +139,18 @@ export class EnvelopeService {
         data: payloadField,
       });
 
-      signers.map(async (signer) => {
-        await this.emailQueue.add('send-envelope', {
-          subject,
-          description,
-          email: signer.email,
-          username: user.username,
-          link: `http://127.0.0.1:3000/${envelopeId}/${signer.id}`,
-        });
+      return envelope;
+    });
+    const { fileName } = (await transaction).documents;
+    const url = await this.s3Service.get(fileName);
+
+    signers.map(async (signer) => {
+      await this.emailQueue.add('send-envelope', {
+        subject,
+        description,
+        email: signer.email,
+        username: user.username,
+        link: url,
       });
     });
   }
@@ -177,23 +181,12 @@ export class EnvelopeService {
     });
   }
 
-  async sign({
-    signerId,
-    envelopeId,
-    fieldId,
-    value,
-    ipAddress,
-  }: EnvelopeSignRequest) {
+  async sign({ signerId, envelopeId, value, ipAddress }: EnvelopeSignRequest) {
     const signer = await this.signerService.getById(signerId);
-
-    let payload = typeof value === 'string' ? value : null;
-    if (typeof value !== 'string') {
-      const { url } = await this.s3Service.upload(value);
-      payload = url;
-    }
+    const { url } = await this.s3Service.upload(value);
 
     this.prismaService.$transaction(async (tx) => {
-      await tx.envelope.update({
+      const envelope = await tx.envelope.update({
         data: {
           auditLogs: {
             create: {
@@ -206,36 +199,92 @@ export class EnvelopeService {
         where: {
           id: envelopeId,
         },
+        include: {
+          documents: {
+            select: {
+              fields: {
+                where: {
+                  type: 'SIGNATURE',
+                },
+              },
+              fileKey: true,
+            },
+          },
+        },
       });
       await tx.field.update({
         data: {
-          value: payload,
+          value: url,
         },
         where: {
-          id: fieldId,
+          id: envelope.documents.fields[0].id,
         },
       });
     });
 
-    const envelopeFields = await this.prismaService.envelope.findUnique({
-      where: {
-        id: envelopeId,
-      },
-      select: {
-        documents: {
-          select: {
-            fields: true,
+    const { user, documents, subject } =
+      await this.prismaService.envelope.findUnique({
+        where: {
+          id: envelopeId,
+        },
+        include: {
+          documents: {
+            select: {
+              fields: true,
+              fileName: true,
+            },
+          },
+          user: {
+            select: {
+              email: true,
+              username: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const isComplete = envelopeFields.documents.fields.every(
-      (field) => field.value !== null,
-    );
+    const isComplete = documents.fields.every((field) => field.value !== null);
 
-    //do background task update pdf
     if (isComplete) {
+      await this.pdfQueue.add('deffered-merging', {
+        envelopeId,
+      });
+
+      const url = await this.s3Service.get(documents.fileName);
+
+      await this.emailQueue.add('complete-notification', {
+        email: user.email,
+        username: user.username,
+        subject: subject,
+        url: url,
+      });
     }
+  }
+
+  async reminder(envelopeId: string) {
+    const { documents, signers, subject } =
+      await this.prismaService.envelope.findUnique({
+        where: {
+          id: envelopeId,
+        },
+        include: {
+          documents: {
+            select: {
+              fileName: true,
+            },
+          },
+          signers: true,
+        },
+      });
+    const url = await this.s3Service.get(documents.fileName);
+
+    signers.map(async (signer) => {
+      await this.emailQueue.add('reminder', {
+        username: `${signer.firstName} ${signer.lastName}`,
+        email: signer.email,
+        subject: subject,
+        url: url,
+      });
+    });
   }
 }

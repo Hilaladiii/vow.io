@@ -1,4 +1,10 @@
-import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { FieldType } from 'generated/prisma/enums';
 
 export class EnvelopeFieldDto {
@@ -21,4 +27,12 @@ export class EnvelopeFieldDto {
   @IsNotEmpty()
   @IsNumber()
   y: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  height: number;
+
+  @IsNotEmpty()
+  @IsNumber()
+  width: number;
 }

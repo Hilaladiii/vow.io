@@ -26,13 +26,15 @@ export type EnvelopeSentRequest = {
   envelopeId: string;
   subject: string;
   description?: string;
-  fields: Pick<Field, 'signerId' | 'pageNumber' | 'type' | 'x' | 'y'>[];
+  fields: Pick<
+    Field,
+    'signerId' | 'pageNumber' | 'type' | 'x' | 'y' | 'height' | 'width'
+  >[];
 };
 
 export type EnvelopeSignRequest = {
   signerId: string;
   envelopeId: string;
-  fieldId: string;
   ipAddress: string;
-  value: string | Express.Multer.File;
+  value: Express.Multer.File;
 };

@@ -14,6 +14,6 @@ export class EnvelopeSent {
 
   @IsDefined()
   @ValidateNested()
-  @Type(() => Array<EnvelopeFieldDto>)
+  @Type(() => EnvelopeFieldDto)
   fields: EnvelopeFieldDto[];
 }
