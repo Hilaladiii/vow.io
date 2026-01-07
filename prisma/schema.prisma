@@ -20,7 +20,7 @@ model User{
   username String @unique
   password String
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")  
+  updatedAt DateTime @updatedAt @default(now()) @map("updated_at")  
 
   envelopes Envelope[]
 
@@ -32,6 +32,7 @@ model Document{
   fileName String @map("file_name")
   fileKey String @map("file_key")
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @default(now()) @map("updated_at")  
 
   envelopeId String @unique @map("envelope_id")
   envelope Envelope @relation(fields: [envelopeId],references: [id])
@@ -51,6 +52,7 @@ model Envelope{
   subject String
   status EnvelopeStatus
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @default(now()) @map("updated_at")  
 
   userId String @map("user_id")
 
@@ -91,6 +93,9 @@ model Field{
   type FieldType  
   x Float 
   y Float
+  width Float
+  height Float
+
   pageNumber Int @map("page_number")
 
   signerId String @map("signer_id")
