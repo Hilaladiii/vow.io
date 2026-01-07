@@ -12,6 +12,9 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 
+# S3
+s3.config.json
+
 # OS
 .DS_Store
 

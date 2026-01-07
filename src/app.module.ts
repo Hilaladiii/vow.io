@@ -10,10 +10,11 @@ import { RedisModule } from './modules/redis/redis.module';
 import { UserModule } from './modules/user/user.module';
 import { DocumentModule } from './modules/document/document.module';
 import { S3Module } from './modules/s3/s3.module';
-import { EnvelopeService } from './modules/envelope/envelope.service';
-import { EnvelopeController } from './modules/envelope/envelope.controller';
 import { SignerModule } from './modules/signer/signer.module';
 import { EmailQueue } from './commons/providers/queue/email-queue';
+import { BullModule } from '@nestjs/bull';
+import { PdfQueue } from './commons/providers/queue/pdf-queue';
+import { EnvelopeModule } from './modules/envelope/envelope.module';
 
 @Module({
   imports: [
@@ -33,6 +34,17 @@ import { EmailQueue } from './commons/providers/queue/email-queue';
       }),
       inject: [ConfigService],
     }),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        redis: {
+          host: configService.get('REDIS_HOST'),
+          port: configService.get('REDIS_PORT'),
+          password: configService.get('REDIS_PASSWORD'),
+        },
+      }),
+      inject: [ConfigService],
+    }),
     PrismaModule,
     AuthModule,
     RedisModule,
@@ -40,15 +52,15 @@ import { EmailQueue } from './commons/providers/queue/email-queue';
     DocumentModule,
     S3Module,
     SignerModule,
+    EnvelopeModule,
   ],
   providers: [
     {
       provide: APP_FILTER,
       useClass: SentryGlobalFilter,
     },
-    EnvelopeService,
     EmailQueue,
+    PdfQueue,
   ],
-  controllers: [EnvelopeController],
 })
 export class AppModule {}
