@@ -15,6 +15,9 @@ import { EmailQueue } from './commons/providers/queue/email-queue';
 import { BullModule } from '@nestjs/bull';
 import { PdfQueue } from './commons/providers/queue/pdf-queue';
 import { EnvelopeModule } from './modules/envelope/envelope.module';
+import { StripeModule } from './modules/stripe/stripe.module';
+import { EncryptionService } from './modules/encryption/encryption.service';
+import { EncryptionModule } from './modules/encryption/encryption.module';
 
 @Module({
   imports: [
@@ -53,6 +56,8 @@ import { EnvelopeModule } from './modules/envelope/envelope.module';
     S3Module,
     SignerModule,
     EnvelopeModule,
+    StripeModule.forRootAsync(),
+    EncryptionModule,
   ],
   providers: [
     {
@@ -61,6 +66,7 @@ import { EnvelopeModule } from './modules/envelope/envelope.module';
     },
     EmailQueue,
     PdfQueue,
+    EncryptionService,
   ],
 })
 export class AppModule {}

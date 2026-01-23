@@ -9,6 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as mime from 'mime-types';
+import { EncryptionService } from '../encryption/encryption.service';
 
 @Injectable()
 export class S3Service implements OnModuleInit {
@@ -16,7 +17,10 @@ export class S3Service implements OnModuleInit {
   private bucketName: string;
   private readonly logger = new Logger(S3Service.name);
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private encryptionService: EncryptionService,
+  ) {
     this.s3Client = new S3Client({
       endpoint: this.configService.get('S3_ENDPOINT'),
       region: this.configService.get('S3_REGION'),
@@ -57,11 +61,15 @@ export class S3Service implements OnModuleInit {
   async upload(file: Express.Multer.File) {
     try {
       const key = `${file.originalname}-${new Date()}`;
+      const encrypted = this.encryptionService.encrypt(file.buffer);
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
+        Body: encrypted,
+        ContentType: 'application/octet-stream',
+        Metadata: {
+          'original-mime-type': file.mimetype,
+        },
       });
 
       await this.s3Client.send(command);
@@ -76,13 +84,16 @@ export class S3Service implements OnModuleInit {
   }
 
   async uploadBuffer(buffer: Buffer, key: string) {
-    const contentType = mime.lookup(key) || 'application/octet-stream';
+    const encrypted = this.encryptionService.encrypt(buffer);
 
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: key,
-      Body: buffer,
-      ContentType: contentType,
+      Body: encrypted,
+      ContentType: 'application/octet-stream',
+      Metadata: {
+        'original-mime-type': mime.lookup(key) || 'application/octet-stream',
+      },
     });
 
     await this.s3Client.send(command);
@@ -90,6 +101,14 @@ export class S3Service implements OnModuleInit {
     return {
       url,
     };
+  }
+
+  async getFileBuffer(key: string) {
+    const command = new GetObjectCommand({ Bucket: this.bucketName, Key: key });
+    const response = await this.s3Client.send(command);
+    const byteArray = await response.Body.transformToByteArray();
+    const encryptedBuffer = Buffer.from(byteArray);
+    return this.encryptionService.decrypt(encryptedBuffer);
   }
 
   async get(filename: string) {

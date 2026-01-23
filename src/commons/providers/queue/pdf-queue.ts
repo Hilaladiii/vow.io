@@ -35,8 +35,9 @@ export class PdfQueue {
       const finalPdf = await PDFDocument.create();
       const helveticaFont = await finalPdf.embedFont(StandardFonts.Helvetica);
 
-      const pdfUrl = await this.s3Service.get(envelope.documents.fileName);
-      const pdfBuffer = await this.downloadFile(pdfUrl);
+      const pdfBuffer = await this.s3Service.getFileBuffer(
+        envelope.documents.fileName,
+      );
 
       const srcPdf = await PDFDocument.load(pdfBuffer);
       const copiedPages = await finalPdf.copyPages(
@@ -59,7 +60,7 @@ export class PdfQueue {
           const pdfY = pageHeight - field.y - field.height;
 
           if (field.type === 'SIGNATURE') {
-            const imageBuffer = await this.downloadFile(field.value);
+            const imageBuffer = await this.s3Service.getFileBuffer(field.value);
 
             let image: PDFImage;
             image = await finalPdf.embedPng(imageBuffer);
@@ -123,10 +124,5 @@ export class PdfQueue {
       console.log(error);
       throw error;
     }
-  }
-
-  private async downloadFile(url: string): Promise<Buffer> {
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    return Buffer.from(response.data);
   }
 }

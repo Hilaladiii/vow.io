@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PDFDocument } from 'pdf-lib';
 import { S3Service } from '../s3/s3.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -61,5 +61,14 @@ export class DocumentService {
     } catch (error) {
       throw new Error('Failed merge PDF');
     }
+  }
+
+  async previewDocument(id: string) {
+    const doc = await this.prismaService.document.findUnique({ where: { id } });
+    if (!doc) throw new BadRequestException('Invalid document id');
+
+    const buffer = await this.s3Service.getFileBuffer(doc.fileName);
+
+    return { buffer, doc };
   }
 }
